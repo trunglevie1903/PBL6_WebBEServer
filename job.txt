@@ -1,0 +1,21 @@
+- User watch Video
+  + Table: UserWatchVideo, VideoStatistic
+    ++ UserWatchVideo: userId, videoId, watchedAt
+    ++ VideoStatistic: videoId, watchCount, lastUpdateWatchCount
+  + Function:
+    ++ When user request the watch video page, have a way to count as the user watched the video, and save that to UserWatchVideo
+    ++ Update viewCount with an interval (for example 5 minutes) (node-cron module might be useful)
+
+- User like and dislike video
+  + Table: UserLikeVideo, VideoStatistic
+    ++ UserLikeVide: userId, videoId, likeStatus(like/dislike/none), createdAt, updatedAt
+    ++ VideoStatistic: videoId, likeCount, lastUpdateLikeCount, dislikeCount, lastUpdateDislikeCount
+  + Function: 
+    ++ When user like/dislike a video, update the like status
+    ++ Update likeCount and dislikeCount with an interval (for example 5 minutes)
+
+- User comment video
+  + Table: UserCommentVideo
+    ++ UserCommentVideo: userId, videoId, commentId, commentText, parentCommentId, lastUpdate(latest value between createdAt and updatedAt)
+
+  + FE work: Show the comment box, comment have it owns reply button and child comments (if there is any)

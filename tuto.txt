@@ -1,0 +1,45 @@
+- download vscode system installer, install vscode
+- download and install npm
+- open folder for the script
+- cmd line: npm init -y
+- cmd line: npm i -S express | npm i -D typescript @types/node @types/express ts-node nodemon
+- cmd line: npx tsc --init
+- update file "tsconfig.json":
+{
+"compilerOptions": {
+    "target": "ES6",
+    "module": "commonjs",
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "esModuleInterop": true
+},
+"include": ["src/**/*.ts"],
+"exclude": ["node_modules"]
+}
+- install cors (for BE-FE interact): npm i cors
+- cmd line: npm i -S sequelize mysql2 jsonwebtoken bcrypt | npm i -D @types/jsonwebtoken @types/bcrypt @types/sequelize
+- cmd line: npm i -S dotenv | npm i -D @types/dotenv
+- create ".env" file, for example:
+# .env
+PORT=4000
+DATABASE_URL=mongodb://localhost:27017/myapp
+JWT_SECRET=mysecretkey
+- create file "src/config.ts" with this content:
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load the environment variables from the .env file
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+interface Config {
+  port: string | number;
+  databaseUrl: string;
+  jwtSecret: string;
+}
+
+// Define the config object and export it
+export const config: Config = {
+  port: process.env.PORT || 3000,
+  databaseUrl: process.env.DATABASE_URL || '',
+  jwtSecret: process.env.JWT_SECRET || 'defaultsecret',
+};
