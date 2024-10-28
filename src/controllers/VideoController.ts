@@ -6,8 +6,7 @@ import path from "path";
 import VideoService from "../services/VideoService";
 import UserService from "../services/UserService";
 import FormData from 'form-data';
-import axios, { responseEncoding } from 'axios';
-import { timeStamp } from "console";
+import axios from 'axios';
 
 // Helper Functions
 const extractVideoId = (filePath: string): string => {
@@ -155,8 +154,8 @@ export default class VideoController {
         if (!fs.existsSync(path.join('uploads/audios'))) {
           fs.mkdirSync(path.join('uploads/audios'), { recursive: true });
         }
-        await extractAudio(videoFilePath, audioFilePath);
-        await sendAudioToAIS(videoId, audioFilePath);
+        // await extractAudio(videoFilePath, audioFilePath);
+        // await sendAudioToAIS(videoId, audioFilePath);
 
         const user = await findUser(req.user.username);
         if (!user) return res.status(404).json({ message: "User not found" });

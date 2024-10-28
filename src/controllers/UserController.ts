@@ -1,6 +1,51 @@
+import fs from "fs";
+import path from "path";
 import { Request, Response } from "express";
 import UserService from "../services/UserService";
 import UserProfileService from "../services/UserProfileService";
+import multer from "multer";
+
+const getUserIdFromUserName = async (username: string | null) => {
+  if (username === null || username === "") return "";
+  const user = await UserService.findByUsername(username);
+  const userId = user instanceof Error ? "" : user.userId;
+  return userId;
+}; 
+
+const createMulterStorage = (folderPath: string) => multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, folderPath)
+  },
+  filename: (req, file, cb) => {
+    const userId = getUserIdFromUserName(req.user.username);
+    cb(null, `${userId}.png`);
+  }
+});
+const bannerStorage = createMulterStorage("uploads/banners");
+const avatarStorage = createMulterStorage("uploads/avatars");
+
+const uploadBanner = multer({ storage: bannerStorage }).single("bannerImage");
+const uploadAvatar = multer({ storage: avatarStorage }).single("avatarImage");
+
+const readImageAsString = async (imagePath: string, defaultPath: string): Promise<string | Error> => {
+  try {
+    const validPath = fs.existsSync(imagePath) ? imagePath : defaultPath;
+    const imageData = await fs.promises.readFile(validPath);
+    const base64Image = imageData.toString('base64');
+    const ext = path.extname(validPath).substring(1);
+    return `data:image/${ext};base64,${base64Image}`;
+  } catch (error) {
+    console.error(error);
+    return new Error(error instanceof Error ? error.message : error);
+  }
+};
+
+const readAvatarAsString = async (imagePath: string) => {
+  return await readImageAsString(imagePath, "uploads/avatars/default_avatar.jpg");
+};
+const readBannerAsString = async (imagePath: string) => {
+  return await readImageAsString(imagePath, "uploads/banners/default_banner.png");
+};
 
 class UserController {
   static registerUser = async (
@@ -112,20 +157,187 @@ class UserController {
     try {
       if (!userId) throw new Error("Invalid user ID");
 
-      const userProfile = await UserProfileService.findByPk(userId);
+      const user = await UserService.findByPk(userId);
+      if (user instanceof Error) throw user;
+
+      const userProfile = await UserProfileService.findByPk(user.userId);
       if (userProfile instanceof Error) throw userProfile;
 
-      const user = await UserService.findByPk(userProfile.userId);
-      if (user instanceof Error) throw user;
-      return res.status(200).json({
-        profile: {
-          username: user.username,
-          avatarImage: userProfile.avatarImage,
-        }
-      })
+      const avatarImage = await readAvatarAsString(userProfile.avatarImagePath);
+      if (avatarImage instanceof Error) throw avatarImage;
+
+      const returnData = {
+        username: user.username,
+        avatarImage
+      };
+      return res.status(200).json({miniProfile: returnData});
     } catch (error) {
       console.error(error);
       return res.status(400).json({message: `Error: ${error instanceof Error ? error.message : error}`});
+    }
+  };
+
+  static getUserProfile = async (req: Request, res: Response) => {
+    try {
+      const userId: string | null = req.params.userId;
+      if (!userId || userId === "") throw new Error("Invalid user ID");
+
+      const user = await UserService.findByPk(userId);
+      if (user instanceof Error) throw user;
+
+      const userProfile = await UserProfileService.findByPk(user.userId);
+      if (userProfile instanceof Error) throw userProfile;
+
+      const bannerImage = await readBannerAsString(userProfile.bannerImagePath);
+      if (bannerImage instanceof Error) throw bannerImage;
+
+      const avatarImage = await readAvatarAsString(userProfile.avatarImagePath);
+      if (avatarImage instanceof Error) throw avatarImage;
+
+      const returnData = {
+        userId: user.userId,
+        username: user.username,
+        name: user.name,
+        description: userProfile.description,
+        bannerImage, avatarImage
+      };
+      return res.status(200).json({profile: returnData});
+    } catch (error) {
+      console.error(error);
+      return res.status(400).json({message: `Error: ${error instanceof Error ? error.message : error}`});
+    }
+  };
+
+  static getSelfProfile = async (req: Request, res: Response) => {
+    try {
+      const {username} = req.user;
+      if (!username) throw new Error("You are not allowed to perform this action");
+
+      const user = await UserService.findByUsername(username);
+      if (user instanceof Error) throw user;
+      
+      const userProfile = await UserProfileService.findByPk(user.userId);
+      if (userProfile instanceof Error) throw userProfile;
+
+      const bannerImage = await readBannerAsString(userProfile.bannerImagePath);
+      if (bannerImage instanceof Error) throw bannerImage;
+
+      const avatarImage = await readAvatarAsString(userProfile.avatarImagePath);
+      if (avatarImage instanceof Error) throw avatarImage;
+
+      const returnData = {
+        userId: user.userId,
+        username: user.username,
+        name: user.name,
+        description: userProfile.description,
+        bannerImage, avatarImage
+      };
+      return res.status(200).json({profile: returnData});
+    } catch (error) {
+      console.error(error);
+      return res.status(400).json({message: `Error: ${error instanceof Error ? error.message : error}`});
+    }
+  };
+
+  static updateSelfName = async (req: Request, res: Response) => {
+    try {
+      const {username} = req.user;
+      if (!username) throw new Error("You are not allowed to perform this action");
+
+      const user = await UserService.findByUsername(username);
+      if (user instanceof Error) throw user;
+
+      const {name} = req.body;
+      if (!name || name === "") throw new Error("Empty data");
+
+      user.name = name;
+      await user.save();
+      return res.status(200).json({message: "Name is updated"});
+    } catch (error) {
+      console.error(error);
+      return res.status(400).json({message: `Error: ${error instanceof Error ? error.message : error}`});
+    }
+  };
+
+  static updateSelfDescription = async (req: Request, res: Response) => {
+    try {
+      const {username} = req.user;
+      if (!username) throw new Error("You are not allowed to perform this action");
+
+      const user = await UserService.findByUsername(username);
+      if (user instanceof Error) throw user;
+
+      const userProfile = await UserProfileService.findByPk(user.userId);
+      if (userProfile instanceof Error) throw userProfile;
+
+      const {description} = req.body;
+
+      userProfile.description = description;
+      await userProfile.save();
+      return res.status(200).json({message: "Description is updated"});
+    } catch (error) {
+      console.error(error);
+      return res.status(400).json({message: `Error: ${error instanceof Error ? error.message : error}`});
+    }
+  };
+
+  static updateSelfBannerImage = async (req: Request, res: Response) => {
+    try {
+      const { username } = req.user;
+      if (!username) throw new Error("You are not allowed to perform this action");
+  
+      const user = await UserService.findByUsername(username);
+      if (user instanceof Error) throw user;
+  
+      const userProfile = await UserProfileService.findByPk(user.userId);
+      if (userProfile instanceof Error) throw userProfile;
+  
+      let { bannerImage } = req.body;
+      if (!bannerImage || bannerImage === "") throw new Error("Empty data");
+  
+      // Remove the MIME prefix if present
+      const base64Data = bannerImage.replace(/^data:image\/\w+;base64,/, "");
+      const bannerImageBuffer = Buffer.from(base64Data, "base64");
+  
+      const filePath = path.join("uploads/banners", `${user.userId}.png`);
+      await fs.promises.writeFile(filePath, bannerImageBuffer);
+      userProfile.bannerImagePath = filePath;
+      await userProfile.save();
+  
+      return res.status(200).json({ message: "Banner image is updated" });
+    } catch (error) {
+      console.error(error);
+      return res.status(400).json({ message: `Error: ${error instanceof Error ? error.message : error}` });
+    }
+  };
+
+  static updateSelfAvatarImage = async (req: Request, res: Response) => {
+    try {
+      const { username } = req.user;
+      if (!username) throw new Error("You are not allowed to perform this action");
+  
+      const user = await UserService.findByUsername(username);
+      if (user instanceof Error) throw user;
+  
+      const userProfile = await UserProfileService.findByPk(user.userId);
+      if (userProfile instanceof Error) throw userProfile;
+  
+      let { avatarImage } = req.body;
+      if (!avatarImage || avatarImage === "") throw new Error("Empty data");
+  
+      // Remove the MIME prefix if present
+      const base64Data = avatarImage.replace(/^data:image\/\w+;base64,/, "");
+      const avatarImageBuffer = Buffer.from(base64Data, "base64");
+  
+      const filePath = path.join("uploads/avatars", `${user.userId}.png`);
+      await fs.promises.writeFile(filePath, avatarImageBuffer);
+      userProfile.avatarImagePath = filePath;
+      await userProfile.save();
+  
+      return res.status(200).json({ message: "Avatar image is updated" });
+    } catch (error) {
+      console.error(error);
+      return res.status(400).json({ message: `Error: ${error instanceof Error ? error.message : error}` });
     }
   };
 }

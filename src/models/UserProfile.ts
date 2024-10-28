@@ -6,8 +6,8 @@ class UserProfile extends Model<
   UserProfile_Interface, UserProfile_CreationInterface
 > implements UserProfile_Interface {
   public userId!: string;
-  public bannerImage!: string;
-  public avatarImage!: string;
+  public bannerImagePath!: string;
+  public avatarImagePath!: string;
   public description!: string;
 };
 
@@ -16,11 +16,11 @@ UserProfile.init({
     type: DT.UUID,
     primaryKey: true
   },
-  bannerImage: {
+  bannerImagePath: {
     type: DT.STRING,
     allowNull: true
   },
-  avatarImage: {
+  avatarImagePath: {
     type: DT.STRING,
     allowNull: true
   },
