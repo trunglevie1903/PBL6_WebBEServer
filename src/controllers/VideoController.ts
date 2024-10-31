@@ -214,7 +214,7 @@ export default class VideoController {
       const returnData = {
         videoId: video.videoId,
         title: video.title,
-        description: video.description,
+        // description: video.description,
         thumbnail: thumbnailImageAsString,
       };
       return res.status(200).json({returnData});
@@ -372,5 +372,33 @@ export default class VideoController {
     }
   };
 
+  static findVideoIdsByCreatorUserId = async (req: Request, res: Response) => {
+    try {
+      const {userId} = req.params;
+      if (!userId) throw new Error("Invalid user key");
 
+      const videoIds = await VideoService.findVideoByCreatorUserId(userId);
+      if (videoIds instanceof Error) throw videoIds;
+
+      return res.status(200).json(videoIds);
+    } catch (error) {
+      console.error(`Error: ${error}`); 
+      return res.status(400).json({message: `Server error: ${error}`});
+    }
+  };
+
+  static findVideoCountByCreatorUserId = async (req: Request, res: Response) => {
+    try {
+      const {userId} = req.params;
+      if (!userId) throw new Error("Invalid user key");
+
+      const videoCount = await VideoService.findVideoCountByCreatorUserId(userId);
+      if (videoCount instanceof Error) throw videoCount;
+
+      else res.status(200).json(videoCount);
+    } catch (error) {
+      console.error(`Error: ${error}`); 
+      return res.status(400).json({message: `Server error: ${error}`});
+    }
+  };
 }

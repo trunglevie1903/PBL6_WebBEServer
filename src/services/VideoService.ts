@@ -5,6 +5,7 @@ import Video from "../models/Video";
 import VideoDetailInterface from "../interfaces/VideoDetail_Interface";
 import VideoSummary from "../models/VideoSummary";
 import VideoTranscript from "../models/VideoTranscript";
+import UserService from "./UserService";
 
 class VideoService {
   static generateValidVideoId = async () => {
@@ -175,6 +176,49 @@ class VideoService {
 
       const result = await VideoTranscript.destroy({where: {videoId}});
       return result;
+    } catch (error) {
+      return new Error(error instanceof Error ? error.message : error);
+    }
+  };
+
+  static findVideoByCreatorUserId = async (userId: string) => {
+    try {
+      if (!userId) throw new Error("Invalid user key");
+      const user = await UserService.findByPk(userId);
+      if (user instanceof Error) throw user;
+
+      const videos = await Video.findAll({
+        where: {
+          creatorUserId: {
+            [Op.eq]: user.userId
+          }
+        },
+        order: [
+          ["uploadDate", "DESC"]
+        ],
+        limit: 100
+      });
+      if (videos instanceof Error) throw videos;
+      else return videos.map(item => item.videoId);
+    } catch (error) {
+      return new Error(error instanceof Error ? error.message : error);
+    }
+  };
+
+  static findVideoCountByCreatorUserId = async (userId: string) => {
+    try {
+      if (!userId) throw new Error("Invalid user key");
+      const user = await UserService.findByPk(userId);
+      if (user instanceof Error) throw user;
+
+      const count = await Video.count({
+        where: {
+          creatorUserId: {
+            [Op.eq]: user.userId
+          }
+        }
+      });
+      return count;
     } catch (error) {
       return new Error(error instanceof Error ? error.message : error);
     }

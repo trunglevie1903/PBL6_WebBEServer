@@ -17,5 +17,7 @@ VideoRouter.route("/update-transcript/").post(VideoController.updateVideoTranscr
 VideoRouter.route("/update-summary/").post(VideoController.updateVideoSummary);
 VideoRouter.route("/get-transcript/:videoId").get(VideoController.getVideoTranscript);
 VideoRouter.route("/get-summary/:videoId").get(VideoController.getVideoSummary);
+VideoRouter.route("/of-user/:userId").get(VideoController.findVideoIdsByCreatorUserId);
+VideoRouter.route("/created-count-of-user/:userId").get(VideoController.findVideoCountByCreatorUserId);
 
 export default VideoRouter;

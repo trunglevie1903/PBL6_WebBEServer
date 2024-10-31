@@ -5,15 +5,18 @@ import AuthenticateUser from "../middlewares/AuthenticateUser";
 import UserService from "../services/UserService";
 
 const UserRouter = Router();
+// Register new user
 UserRouter.route('/register').post(UserController.registerUser);
+// User log in
 UserRouter.route('/login').post(UserController.loginUser);
+// Refresh authentication token
 UserRouter.route('/refresh-token').post(UserController.refreshToken);
+// User log out
 UserRouter.route('/sign-out').post(AuthenticateUser, UserController.logOutUser);
+// User authenticate account
 UserRouter.route('/authenticate-account').post(AuthenticateUser, UserController.authenticateAccount);
-UserRouter.route('/id/:userId').get(UserService.findByPk);
 // Get username and user's avatar in video watching page
 UserRouter.route('/profile-mini-card/:userId').get(UserController.getUserInfoForSmallCard);
-
 // Fetch profile of any user
 UserRouter.route('/key/:userId').get(UserController.getUserProfile);
 // Fetch self profile
