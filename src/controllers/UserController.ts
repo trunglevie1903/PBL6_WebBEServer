@@ -1,9 +1,11 @@
 import fs from "fs";
 import path from "path";
 import { Request, Response } from "express";
+import multer from "multer";
+
 import UserService from "../services/UserService";
 import UserProfileService from "../services/UserProfileService";
-import multer from "multer";
+import ForgotPasswordService from "../services/PasswordResetService";
 
 const getUserIdFromUserName = async (username: string | null) => {
   if (username === null || username === "") return "";
@@ -170,7 +172,7 @@ class UserController {
         username: user.username,
         avatarImage
       };
-      return res.status(200).json({miniProfile: returnData});
+      return res.status(200).json({profile: returnData});
     } catch (error) {
       console.error(error);
       return res.status(400).json({message: `Error: ${error instanceof Error ? error.message : error}`});
@@ -340,6 +342,58 @@ class UserController {
       return res.status(400).json({ message: `Error: ${error instanceof Error ? error.message : error}` });
     }
   };
+
+  static changePassword = async (req: Request, res: Response) => {
+    try {
+      const {username} = req.user;
+      if (!username) throw new Error("User not found");
+      
+      const {oldPassword, newPassword} = req.body;
+      if (!oldPassword || !newPassword) throw new Error("New password does not meet the required criteria.");
+
+      const result = await UserService.changePassword(username, oldPassword, newPassword);
+      if (result instanceof Error) throw result;
+      else return res.status(200).json(result);
+
+    } catch (error) {
+      if (error instanceof Error) {
+        const message = error.message;
+        switch (message) {
+          case "User not found":
+            return res.status(404).json({message});
+          case "New password cannot be the same as the old password.":
+          case "New password does not meet the required criteria.":
+            return res.status(400).json({message});
+          case "The old password is incorrect.":
+            return res.status(401).json({message});
+          default:
+            return res.status(500).json({message});
+        }
+      } else return res.status(500).json({message: error});
+    }
+  };
+
+  static async requestPasswordReset(req: Request, res: Response) {
+    try {
+      const { username, email } = req.body;
+      const token = await ForgotPasswordService.requestPasswordReset({ username, email });
+
+      // Send a success response; token generation is logged for testing
+      res.status(200).json({ message: "Reset instructions sent to email", token });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  static async resetPassword(req: Request, res: Response) {
+    try {
+      const { token, newPassword } = req.body;
+      await ForgotPasswordService.resetPassword({ token, newPassword });
+      res.status(200).json({ message: "Password reset successful" });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
 }
 
 export default UserController;

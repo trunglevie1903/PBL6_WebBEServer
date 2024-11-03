@@ -5,12 +5,15 @@ import { Op } from 'sequelize';
 import { config } from '../config';
 import User from "../models/User";
 import UserAuthentication from '../models/UserAuthentication';
+import PasswordResetTokenModel from '../models/PasswordResetToken';
 
 const SALT_ROUNDS = 10;
 const JWT_SECRET = config.jwtSecret;
 const JWT_REFRESH_SECRET = config.jwtSecret;
 const JWT_EXPIRES_IN = "15m";
 const JWT_REFRESH_EXPIRES_IN = "7d";
+
+
 
 class UserService {
   static findByUsername = async (
@@ -194,6 +197,56 @@ class UserService {
       return new Error(error instanceof Error ? error.message : error);
     }
   };
+
+  static changePassword = async (username: string, oldPassword: string, newPassword: string) => {
+    try {
+      // Username not found => User not found
+      if (!username) throw new Error("User not found");
+      // Empty data
+      if (!oldPassword || !newPassword) throw new Error("New password does not meet the required criteria.");
+      // No user match username => User not found
+      const user = await UserService.findByUsername(username);
+      if (user instanceof Error) throw new Error("User not found");
+      // If old password is not match
+      if (bcrypt.compareSync(oldPassword, user.password_hash) === false) throw new Error("The old password is incorrect.");
+      // New password match old password
+      const isMatch = bcrypt.compareSync(newPassword, user.password_hash);
+      if (isMatch) throw new Error("New password cannot be the same as the old password.");
+      // Try to change user's password
+      const newPasswordHashed = bcrypt.hashSync(newPassword, SALT_ROUNDS);
+      user.password_hash = newPasswordHashed;
+      await user.save();
+      return ({message: "Password changed"});
+    } catch (error) {
+      console.error(error);
+      return new Error(error instanceof Error ? error.message : error);
+    }
+  };
+
+  // static requestForgotPassword = async (username: string, email: string) => {
+  //   try {
+  //     // Validate data
+  //     if (!username) throw new Error("Username was empty");
+  //     if (!email) throw new Error("Email was empty");
+
+  //     const user = await UserService.findByUsername(username);
+  //     if (user instanceof Error) throw user;
+  //     if (user.email !== email) throw new Error("Mismatch data");
+
+  //     // Generate token
+
+
+  //     const resetToken = await PasswordResetTokenModel.findOrCreate({
+  //       where: {
+  //         userId: user.userId
+  //       }
+  //     });
+
+  //   } catch (error) {
+  //     console.error(error);
+  //     return new Error(error instanceof Error ? error.message : error);
+  //   }
+  // };
 }
 
 export default UserService;

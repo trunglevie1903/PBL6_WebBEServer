@@ -10,33 +10,34 @@ interface AuthenticateRequestInterface extends Request {
 
 const AuthenticateUser = async (
   req: AuthenticateRequestInterface,
-  res: Response, next: NextFunction
+  res: Response,
+  next: NextFunction
 ) => {
-  // console.log(`[AuthMid] header: ${req.header("Authorization")}`);
   const token = req.header("Authorization")?.split(" ")[1];
-  // console.log(`[AuthMid] token: ${token}`);
-  if (!token) return res.status(401).json({ message: "No token found, please login"});
+  if (!token) return res.status(401).json({ message: "No token found, please login" });
 
   try {
     const secret = config.jwtSecret || "mysecretkey";
-    // console.log('secret: ', secret);
     const decoded = jwt.verify(token, secret);
-    // console.log('decoded: ', decoded);
+
     if (typeof decoded === 'object' && 'username' in decoded && 'role' in decoded) {
       const { username, role } = decoded as JwtPayload;
-      // console.log("username and role: ", username, role);
+
+      // find any user with matching username and role
       const isAuthenticated = await UserService.authenticateAccount(username, role);
-      // console.log('is authenticated? ', isAuthenticated);
       if (isAuthenticated) {
         req.user = { ...req.user, username, role };
         next();
-      } 
-      else throw new Error("Invalid credential");
+      } else throw new Error("Invalid credentials");
     } else {
       return res.status(401).json({ message: "Invalid token" });
     }
   } catch (err) {
-    return res.status(403).json({ message: "Unexpected error", error: (err instanceof Error) ? err.message : err });
+    if (err instanceof jwt.TokenExpiredError) {
+      return res.status(403).json({ message: "Token expired, please login again" });
+    } else {
+      return res.status(403).json({ message: "Authentication error", error: err.message });
+    }
   }
 };
 

@@ -2,7 +2,6 @@ import { Router } from "express";
 
 import UserController from "../controllers/UserController";
 import AuthenticateUser from "../middlewares/AuthenticateUser";
-import UserService from "../services/UserService";
 
 const UserRouter = Router();
 // Register new user
@@ -29,7 +28,11 @@ UserRouter.route('/update-self-description').post(AuthenticateUser, UserControll
 UserRouter.route('/update-self-banner-image').post(AuthenticateUser, UserController.updateSelfBannerImage);
 // Update self's profile avatar image
 UserRouter.route('/update-self-avatar-image').post(AuthenticateUser, UserController.updateSelfAvatarImage);
-
-// Update self's password
+// User change password
+UserRouter.route('/change-password').post(AuthenticateUser, UserController.changePassword);
+// User forgot password
+UserRouter.route('/forgot-password').post(UserController.requestPasswordReset);
+// User reset password
+UserRouter.route('/reset-password').post(UserController.resetPassword);
 
 export default UserRouter;

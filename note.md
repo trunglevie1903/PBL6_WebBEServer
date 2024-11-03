@@ -8,9 +8,7 @@
 
 ##### Profile (name, username, password, email)
 
-- Get profile
-
-  There is two types of requests of getting a user's profile: a user get the profile of a user (self or another user) to see, and user get its profile to edit data.
+- Get profile [DONE]
 
   Profile contains:
   - Banner image, avatar image, user's description (from UserProfile model)
@@ -45,7 +43,7 @@
       - bannerImage: string
       - avatarImage: string
 
-- Update profile
+- Update profile [DONE]
 
   Work flow:
   - FE page send a request to BE, try to fetch user's self profile
@@ -86,6 +84,26 @@
       - message: string
 
 - Update password
+- Forgot password
+  BE after receive first request of forgot password
+  - generate token (jwt or uuid) with an expire timestamp
+  - save the token and expire timestamp to DB
+  - send the email, attach a link with the token into the mail
+  - send a response to FE, announce that the email with a link reset password was sent
+
+  When user click that link on the email:
+  - Redirect to FE page with the correspond token
+  - FE page send request to BE to verify if the token is valid
+  - BE verify the token
+    - Is there a token with the same data as this token?
+    - Is that token expired?
+  - BE send response to FE
+  - If response state is a succeed, FE will show a form for user to submit new password
+  - After user submit new password, FE send the request to submit new password to BE, with the new password and the token used to reset password.
+  - BE verify the request
+  - BE reset the password
+  - BE response to FE
+  - FE show if password is changed to the new password or not.
 
 ##### Personal uploaded videos
 
@@ -158,5 +176,3 @@
 #### c. Upload video page
 
 - Upload button is not blocking while waiting for BE's response
-
-- 

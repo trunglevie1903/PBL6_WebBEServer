@@ -154,8 +154,8 @@ export default class VideoController {
         if (!fs.existsSync(path.join('uploads/audios'))) {
           fs.mkdirSync(path.join('uploads/audios'), { recursive: true });
         }
-        // await extractAudio(videoFilePath, audioFilePath);
-        // await sendAudioToAIS(videoId, audioFilePath);
+        await extractAudio(videoFilePath, audioFilePath);
+        await sendAudioToAIS(videoId, audioFilePath);
 
         const user = await findUser(req.user.username);
         if (!user) return res.status(404).json({ message: "User not found" });

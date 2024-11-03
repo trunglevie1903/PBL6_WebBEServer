@@ -8,6 +8,8 @@ import VideoStatistic from "./VideoStatistic";
 import UserLikeVideo from "./UserLikeVideo";
 import Comment from "./Comment";
 import VideoSummary from "./VideoSummary";
+import UserService from "../services/UserService";
+import PasswordResetTokenModel from "./PasswordResetToken";
 
 // UserProfile and UserAuthentication
 User.hasOne(UserProfile, {
@@ -162,13 +164,44 @@ Video.beforeDestroy(async (video) => {
 //   foreignKey: "parentCommentId",
 // });
 
+User.hasOne(PasswordResetTokenModel, {
+  sourceKey: "userId",
+  foreignKey: "userId",
+  onDelete: "CASCADE"
+});
+PasswordResetTokenModel.belongsTo(User, {
+  targetKey: "userId",
+  foreignKey: "userId",
+})
+User.beforeDestroy(async (user) => {
+  await PasswordResetTokenModel.destroy({
+    where: {userId: user.userId}
+  });
+});
+
+const pushInitialData = async () => {
+  try {
+    const adminUser = await UserService.registerUser("Admin", "admin", "leviettrung477@gmail.com", "admin");
+    if (adminUser instanceof Error) throw adminUser;
+    adminUser.role = "admin";
+    await adminUser.save();
+
+    const normUser = await UserService.registerUser("User", "user", "leviettrung477@gmail.com", "user");
+    if (normUser instanceof Error) throw normUser;
+    normUser.role = "user";
+    await normUser.save();
+
+    console.log('Data initiation completed');
+  } catch (error) {
+    console.error(`Data initiation failed: ${error}`);
+  }
+};
+
 const syncModels = async () => {
   try {
-    // await User.sync();
-    // await UserProfile.sync();
-    // await UserAuthentication.sync();
-    // await sequelize.sync({force: true});
-    await sequelize.sync();
+    await sequelize.sync({force: true});
+    // await sequelize.sync();
+    await pushInitialData();
   } catch (error) {
     console.error(error);
   }
