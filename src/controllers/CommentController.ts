@@ -5,99 +5,139 @@ import VideoService from "../services/VideoService";
 import UserService from "../services/UserService";
 
 export default class CommentController {
-  // Get the id list of a video's direct comments
-  static getVideoDirectCommentIdList = async (req: Request, res: Response) => {
+  // "/comment/video/:videoId"
+  // {ids: <string[]>}
+  static findVideoCommentIds = async (req: Request, res: Response) => {
     try {
       const {videoId} = req.params;
       if (!videoId) throw new Error("Invalid video key");
-      const video = await VideoService.findVideoById(videoId);
-      if (video === null) throw new Error("Video was not found");
 
-      const list = await CommentService.getVideoDirectCommentIdList(video.videoId);
-      if (list instanceof Error) throw list;
-      else return res.status(200).json({list: list});
+      const result = await CommentService.findVideoCommentIds(videoId);
+      if (result instanceof Error) throw result;
+      else return res.status(200).json({ids: result});
     } catch (error) {
-      return res.status(400).json({message: `Error: ${error instanceof Error ? error.message : error}`});
+      return res.status(400).json({message: error instanceof Error ? error.message : error});
     }
   };
 
-  // Get the content of a comment via its commentId
-  static getCommentContent = async (req: Request, res: Response) => {
+  // "/comment/id/:commentId"
+  // {commentId: <string>, userId: <string>, videoId: <string>, content: <string>, createdTime: <Date>}
+  static findCommentById = async (req: Request, res: Response) => {
     try {
       const {commentId} = req.params;
       if (!commentId) throw new Error("Invalid comment key");
-      const comment = await CommentService.getCommentContent(commentId);
+      const comment = await CommentService.findCommentById(commentId);
       if (comment instanceof Error) throw comment;
       else return res.status(200).json({comment: comment});
     } catch (error) {
-      return res.status(400).json({message: `Error: ${error instanceof Error ? error.message : error}`});
+      return res.status(400).json({message: error instanceof Error ? error.message : error});
     }
   };
 
-  // Get the id list of a comment's child comments list
-  static getChildCommentIdList = async (req: Request, res: Response) => {
-    try {
-      const {commentId} = req.params;
-      if (!commentId) throw new Error("Invalid comment key");
-      const comment = await CommentService.getCommentContent(commentId);
-      if (comment instanceof Error) throw comment;
-      const ids = await CommentService.getChildCommentIdList(comment.commentId);
-      if (ids instanceof Error) throw ids;
-      else return res.status(200).json({ids: ids});
-    } catch (error) {
-      return res.status(400).json({message: `Error: ${error instanceof Error ? error.message : error}`});
-    }
-  };
-
-  // Create a comment
+  // "/comment/create"
+  // {commentId: <string>, userId: <string>, videoId: <string>, content: <string>, createdTime: <Date>}
   static createComment = async (req: Request, res: Response) => {
     try {
-      // Authorize actor
-      const {username} = req.user;
-      if (!username) throw new Error("You are not authorized to perform this action");
-      const user = await UserService.findByUsername(username);
+      // validate user
+      const user = await UserService.findByUsername(req.user.username);
+      if (!user) throw new Error("User not found");
       if (user instanceof Error) throw user;
-      // Validate videoId and content if any of them are null
+      // extract request body
       const {videoId, content, parentCommentId} = req.body;
-      if (!videoId || !content) throw new Error("Invalid data value");
-      // Validate if videoId is real
+      if (!videoId || !content) throw new Error("Empty data");
+      // validate video
       const video = await VideoService.findVideoById(videoId);
-      if (video === null) throw new Error("Video was not found");
-      // Validate parentCommentId (if the value is not null) if there is a comment with that id
-      if (parentCommentId) {
-        const parentComment = await CommentService.getCommentContent(parentCommentId);
-        if (parentComment instanceof Error) throw parentComment;
-      }
-      // Try to create the new comment and return it
-      const data = {userId: user.userId, videoId: video.videoId, parentCommentId: parentCommentId, content: content};
-      const newComment = await CommentService.createComment(data);
-      if (newComment instanceof Error) throw newComment;
-      else return res.status(201).json({comment: newComment});
+      if (!video) throw new Error("Video not found");
+      // try to create
+      const comment = await CommentService.createComment(user.userId, video.videoId, content, parentCommentId);
+      if (comment instanceof Error) throw comment;
+      else return res.status(201).json({comment: comment});
     } catch (error) {
-      return res.status(400).json({message: `Error: ${error instanceof Error ? error.message : error}`});
+      return res.status(400).json({message: error instanceof Error ? error.message : error});
     }
   };
-  
-  // Delete a comment
-  static deleteComment = async (req: Request, res: Response) => {
+
+  // "/comment/update/:commentId"
+  // {commentId: <string>, userId: <string>, videoId: <string>, content: <string>, createdTime: <Date>}
+  static updateComment = async (req: Request, res: Response) => {
     try {
-      // Authorize actor
-      const {username} = req.user;
-      if (!username) throw new Error("You are not authorized to perform this action");
-      const user = await UserService.findByUsername(username);
+      // validate user
+      const user = await UserService.findByUsername(req.user.username);
+      if (!user) throw new Error("User not found");
       if (user instanceof Error) throw user;
-      // Validate commentId if it is not null
+      // validate commentId
       const {commentId} = req.params;
       if (!commentId) throw new Error("Invalid comment key");
-      // Validate commentId if there is a comment with that id
-      const comment = await CommentService.getCommentContent(commentId);
+      const comment = await CommentService.findCommentById(commentId);
       if (comment instanceof Error) throw comment;
-      // Try to delete the comment
+      if (comment.userId !== user.userId) throw new Error("You are not allowed to change this comment");
+      // extract request body
+      const {newContent} = req.body;
+      if (!newContent) throw new Error("Empty data");
+      const newComment = await CommentService.updateCommentContent(comment.commentId, newContent);
+      if (newComment instanceof Error) throw newComment;
+      else return res.status(200).json({newComment: newComment});
+    } catch (error) {
+      return res.status(400).json({message: error instanceof Error ? error.message : error});
+    }
+  };
+
+  // "/comment/delete/:commentId"
+  // {"Deleted"}
+  static deleteComment = async (req: Request, res: Response) => {
+    try {
+      // validate user
+      const user = await UserService.findByUsername(req.user.username);
+      if (!user) throw new Error("User not found");
+      if (user instanceof Error) throw user;
+      // validate commentId
+      const {commentId} = req.params;
+      if (!commentId) throw new Error("Invalid comment key");
+      const comment = await CommentService.findCommentById(commentId);
+      if (comment instanceof Error) throw comment;
+      if (comment.userId !== user.userId) throw new Error("You are not allowed to change this comment");
+      // try to delete
       const result = await CommentService.deleteComment(comment.commentId);
       if (result instanceof Error) throw result;
-      else return res.status(200).json({message: "comment was deleted"});
+      else return res.status(200).json({message: result});
     } catch (error) {
-      return res.status(400).json({message: `Error: ${error instanceof Error ? error.message : error}`});
+      return res.status(400).json({message: error instanceof Error ? error.message : error});
+    }
+  };
+
+  // "/comment/is-parent/:commentId"
+  // {message: "Yes" | "No"}
+  static isParentComment = async (req: Request, res: Response) => {
+    try {
+      // validate commentId
+      const {commentId} = req.params;
+      if (!commentId) throw new Error("Invalid comment key");
+      const comment = await CommentService.findCommentById(commentId);
+      if (comment instanceof Error) throw comment;
+      // check if this comment is a parent comment of any comment
+      const isParent = await CommentService.isParentComment(commentId);
+      console.log('isParent: ', isParent);
+      if (isParent instanceof Error) throw isParent;
+      else return res.status(200).json({message: isParent ? "Yes" : "No"});
+    } catch (error) {
+      return res.status(400).json({message: error instanceof Error ? error.message : error});
+    }
+  };
+
+  // "/comment/find-child-comment/:commentId"
+  // {ids: <string[]>}
+  static findChildCommentIds = async (req: Request, res: Response) => {
+    try {
+      // validate commentId
+      const {commentId} = req.params;
+      if (!commentId) throw new Error("Invalid comment key");
+      const comment = await CommentService.findCommentById(commentId);
+      if (comment instanceof Error) throw comment;
+      const childComments = await CommentService.findChildCommentIds(comment.commentId);
+      if (childComments instanceof Error) throw childComments;
+      else return res.status(200).json({ids: childComments});
+    } catch (error) {
+      return res.status(400).json({message: error instanceof Error ? error.message : error});
     }
   };
 }

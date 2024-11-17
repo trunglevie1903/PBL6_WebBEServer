@@ -154,8 +154,8 @@ export default class VideoController {
         if (!fs.existsSync(path.join('uploads/audios'))) {
           fs.mkdirSync(path.join('uploads/audios'), { recursive: true });
         }
-        await extractAudio(videoFilePath, audioFilePath);
-        await sendAudioToAIS(videoId, audioFilePath);
+        // await extractAudio(videoFilePath, audioFilePath);
+        // await sendAudioToAIS(videoId, audioFilePath);
 
         const user = await findUser(req.user.username);
         if (!user) return res.status(404).json({ message: "User not found" });
@@ -399,6 +399,19 @@ export default class VideoController {
     } catch (error) {
       console.error(`Error: ${error}`); 
       return res.status(400).json({message: `Server error: ${error}`});
+    }
+  };
+
+  static searchVideo = async (req: Request, res: Response) => {
+    try {
+      const {searchText} = req.params;
+      if (!searchText) throw new Error("Invalid search value");
+
+      const ids = await VideoService.searchVideo(searchText);
+      return res.status(200).json({videoIds: ids instanceof Error ? [] : ids});
+    } catch (error) {
+      console.error(error);
+      return res.status(400).json({message : error instanceof Error ? error.message : error});
     }
   };
 }

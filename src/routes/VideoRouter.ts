@@ -19,5 +19,6 @@ VideoRouter.route("/get-transcript/:videoId").get(VideoController.getVideoTransc
 VideoRouter.route("/get-summary/:videoId").get(VideoController.getVideoSummary);
 VideoRouter.route("/of-user/:userId").get(VideoController.findVideoIdsByCreatorUserId);
 VideoRouter.route("/created-count-of-user/:userId").get(VideoController.findVideoCountByCreatorUserId);
+VideoRouter.route('/search/:searchText').get(VideoController.searchVideo);
 
 export default VideoRouter;

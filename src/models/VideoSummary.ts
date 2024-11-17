@@ -17,7 +17,7 @@ VideoSummary.init({
     primaryKey: true,
   },
   summary: {
-    type: DT.STRING,
+    type: DT.TEXT,
     allowNull: true,
     defaultValue: true
   }

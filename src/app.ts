@@ -41,7 +41,7 @@ class App {
     this.app.use("/user", UserRouter);
     this.app.use("/video", VideoRouter);
     this.app.use("/rel-user-video", RelUserVideoRouter);
-    this.app.use("/comments", CommentRouter);
+    this.app.use("/comment", CommentRouter);
     // this.app.use("/dummy", dummyRouter);
   };
 

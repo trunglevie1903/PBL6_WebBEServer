@@ -34,5 +34,7 @@ UserRouter.route('/change-password').post(AuthenticateUser, UserController.chang
 UserRouter.route('/forgot-password').post(UserController.requestPasswordReset);
 // User reset password
 UserRouter.route('/reset-password').post(UserController.resetPassword);
+// Find user match a value
+UserRouter.route('/search/:searchText').get(UserController.searchUser);
 
 export default UserRouter;

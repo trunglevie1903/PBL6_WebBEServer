@@ -89,8 +89,8 @@ class VideoService {
         description: video.description,
         creatorUserId: video.creatorUserId,
         uploadDate: video.uploadDate,
-        transcript: "Generating...",
-        summary: "Generating..."
+        transcript: "Not available",
+        summary: "Not available"
       };
       return returnData;
     } catch (error) {
@@ -220,6 +220,24 @@ class VideoService {
       });
       return count;
     } catch (error) {
+      return new Error(error instanceof Error ? error.message : error);
+    }
+  };
+
+  static searchVideo = async (searchText: string) => {
+    try {
+      const result = await Video.findAll({
+        where: {
+          [Op.or]: [
+            {title: {[Op.like]: `%${searchText}`}},
+            {description: {[Op.like]: `%${searchText}`}}
+          ]
+        }
+      });
+      if (result instanceof Error) throw result;
+      else return result.map(item => item.videoId);
+    } catch (error) {
+      console.error(error);
       return new Error(error instanceof Error ? error.message : error);
     }
   };

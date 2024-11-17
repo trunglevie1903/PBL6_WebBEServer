@@ -13,8 +13,6 @@ const JWT_REFRESH_SECRET = config.jwtSecret;
 const JWT_EXPIRES_IN = "15m";
 const JWT_REFRESH_EXPIRES_IN = "7d";
 
-
-
 class UserService {
   static findByUsername = async (
     username: string
@@ -223,30 +221,23 @@ class UserService {
     }
   };
 
-  // static requestForgotPassword = async (username: string, email: string) => {
-  //   try {
-  //     // Validate data
-  //     if (!username) throw new Error("Username was empty");
-  //     if (!email) throw new Error("Email was empty");
-
-  //     const user = await UserService.findByUsername(username);
-  //     if (user instanceof Error) throw user;
-  //     if (user.email !== email) throw new Error("Mismatch data");
-
-  //     // Generate token
-
-
-  //     const resetToken = await PasswordResetTokenModel.findOrCreate({
-  //       where: {
-  //         userId: user.userId
-  //       }
-  //     });
-
-  //   } catch (error) {
-  //     console.error(error);
-  //     return new Error(error instanceof Error ? error.message : error);
-  //   }
-  // };
+  static searchUser = async (searchText: string) => {
+    try {
+      const result = await User.findAll({
+        where: {
+          [Op.or]: [
+            {username: {[Op.like]: `%${searchText}`}},
+            {name: {[Op.like]: `%${searchText}`}}
+          ]
+        }
+      });
+      if (result instanceof Error) throw result;
+      else return result.map(item => item.userId);
+    } catch (error) {
+      console.error(error);
+      return new Error(error instanceof Error ? error.message : error);
+    }
+  };
 }
 
 export default UserService;

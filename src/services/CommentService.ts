@@ -1,126 +1,170 @@
 import { Op } from "sequelize";
 
 import Comment from "../models/Comment";
-import { Comment_CreationInterface, Comment_Interface } from "../interfaces/Comment_Interface";
-import VideoService from "./VideoService";
-import UserService from "./UserService";
+import Video from "../models/Video";
+import User from "../models/User";
+import sequelize from "sequelize";
 
-// interface ServiceResponse {
-//   error: Error | null;
-//   data: any
-// };
-
-interface DirectCommentObject {
-  commentId: string;
-  hasChildComment: boolean;
-}
-
-export default class CommentService {
-  // Get the id list of a video's direct comments
-  static getVideoDirectCommentIdList = async (videoId: string): Promise<DirectCommentObject[] | Error> => {
+class CommentService {
+  static findVideoCommentIds = async (videoId: string): Promise<string[] | Error> => {
     try {
-      // Validate the videoId
       if (!videoId) throw new Error("Invalid video key");
-      const video = await VideoService.findVideoById(videoId);
-      if (video === null) throw new Error("Video was not found");
 
-      // Query the video's direct comments
+      const video = await Video.findByPk(videoId);
+      if (!video) throw new Error("Video not found");
+      if (video instanceof Error) throw video;
+
       const comments = await Comment.findAll({
         where: {
-          videoId: {[Op.eq]: video.videoId},
-          parentCommentId: {[Op.eq]: null}
-        }
+          videoId: video.videoId, // Replace 'someVideoId' with your actual videoId
+          parentCommentId: {[Op.or]: ["", null]}        },
       });
+      
       if (comments instanceof Error) throw comments;
-      // console.log('comments: ', comments);
-
-      // Extract the id into the list and return that list
-      const result: DirectCommentObject[] = await Promise.all(
-        comments.map(async (item) => {
-          const id = item.commentId;
-          const childCommentIdList = await this.getChildCommentIdList(id);
-          if (childCommentIdList instanceof Error) throw childCommentIdList;
-          return { commentId: id, hasChildComment: childCommentIdList.length > 0 };
-        })
-      );
-      console.log('result is: ', result);
-      return result;
+      else return comments.map(item => item.commentId);
     } catch (error) {
       console.error(error);
-      return error instanceof Error ? error : new Error(error);
+      return new Error(error instanceof Error ? error.message : error);
     }
   };
 
-  // Get the content of a comment via its commentId
-  static getCommentContent = async (commentId: string): Promise<Comment_Interface | Error> => {
+  static findCommentById = async (commentId: string) => {
     try {
       if (!commentId) throw new Error("Invalid comment key");
+
       const comment = await Comment.findByPk(commentId);
-      if (comment === null) throw new Error("Comment was not found");
+      if (!comment) throw new Error("Comment not found");
       if (comment instanceof Error) throw comment;
+
       return comment;
     } catch (error) {
       console.error(error);
-      return error instanceof Error ? error : new Error(error);
+      return new Error(error instanceof Error ? error.message : error);
     }
   };
 
-  // Get the id list of a comment's child comments list
-  static getChildCommentIdList = async (commentId: string): Promise<string[] | Error> => {
+  static createComment = async (
+    userId: string,
+    videoId: string,
+    content: string,
+    parentCommentId: string | null,
+  ) => {
     try {
-      if (!commentId) throw new Error("Invalid comment key");  
-      const comments = await Comment.findAll({
-        where: {
-          parentCommentId: {[Op.eq]: commentId}
-        }
-      });
-      if (comments instanceof Error) throw comments;
-      
-      const ids = comments.map(item => item.commentId);
-      return ids;
-    } catch (error) {
-      console.error(error);
-      return error instanceof Error ? error : new Error(error);
-    }
-  };
-
-  // Create a comment
-  static createComment = async (data: Comment_CreationInterface): Promise<Comment_Interface | Error> => {
-    try {
-      if (!data.userId || !data.videoId || !data.content) throw new Error("Invalid data value");
-      // Validate userId
-      const user = await UserService.findByPk(data.userId);
+      // validate userId
+      if (!userId) throw new Error("Invalid user Id");
+      const user = await User.findByPk(userId);
+      if (!user) throw new Error("User not found");
       if (user instanceof Error) throw user;
-      // Validate videoId
-      const video = await VideoService.findVideoById(data.videoId);
-      if (video === null) throw new Error("Video was not found");
-      // Validate parentCommentId if there is
-      if (data.parentCommentId !== null) {
-        const parentComment = await Comment.findByPk(data.parentCommentId);
-        if (parentComment === null) throw new Error("Parent comment was not found");
+      // validate videoId
+      if (!videoId) throw new Error("Invalid video key");
+      const video = await Video.findByPk(videoId);
+      if (!video) throw new Error("Video not found");
+      if (video instanceof Error) throw video;
+      // validate parentComentId if it is not null
+      if (parentCommentId !== null && parentCommentId !== "") {
+        const parentComment = await Comment.findByPk(parentCommentId);
+        if (!parentComment) throw new Error("Parent comment not found");
         if (parentComment instanceof Error) throw parentComment;
       }
-      // Query to create
-      const comment = await Comment.create(data);
-      if (comment instanceof Error) throw comment;
-      else return comment;
+      // validate content
+      if (!content) throw new Error("Empty content");
+      // try to create
+      const result = await Comment.create({
+        userId: user.userId,
+        videoId: video.videoId,
+        content: content,
+        parentCommentId: parentCommentId
+      });
+      if (result instanceof Error) throw result;
+      return result;
     } catch (error) {
       console.error(error);
-      return error instanceof Error ? error : new Error(error);
+      return new Error(error instanceof Error ? error.message : error);
     }
   };
 
-  // Delete a Comment
-  static deleteComment = async (commentId: string): Promise<Object | Error> => {
+  static updateCommentContent = async (
+    commentId: string,
+    newContent: string
+  ) => {
     try {
+      // validate commentId
       if (!commentId) throw new Error("Invalid comment key");
       const comment = await Comment.findByPk(commentId);
+      if (!comment) throw new Error("Comment not found");
       if (comment instanceof Error) throw comment;
-      await comment.destroy();
-      return {};
+      // validate new content
+      if (!newContent) throw new Error("Empty new content");
+      // update new content
+      comment.content = newContent;
+      await comment.save();
+      return comment;
     } catch (error) {
       console.error(error);
-      return error instanceof Error ? error : new Error(error);
+      return new Error(error instanceof Error ? error.message : error);
+    }
+  };
+
+  static deleteComment = async (
+    commentId: string
+  ) => {
+    try {
+      // validate commentId
+      if (!commentId) throw new Error("Invalid comment key");
+      const comment = await Comment.findByPk(commentId);
+      if (!comment) throw new Error("Comment not found");
+      if (comment instanceof Error) throw comment;
+      // delete comment
+      await comment.destroy();
+      return "Comment is deleted"
+    } catch (error) {
+      console.error(error);
+      return new Error(error instanceof Error ? error.message : error);
+    }
+  };
+
+  static isParentComment = async (commentId: string) => {
+    try {
+      // validate commentId
+      if (!commentId) throw new Error("Invalid comment key");
+      const comment = await Comment.findByPk(commentId);
+      if (!comment) throw new Error("Comment not found");
+      if (comment instanceof Error) throw comment;
+      // check if this comment is a parent comment of any other comment
+      const childComments = await Comment.findAll({
+        where: {
+          parentCommentId: {[Op.eq]: comment.commentId}
+        }
+      });
+      if (childComments instanceof Error) throw childComments;
+      console.log(childComments.length);
+      return childComments.length > 0;
+    } catch (error) {
+      console.error(error);
+      return new Error(error instanceof Error ? error.message : error);      
+    }
+  };
+
+  static findChildCommentIds = async (commentId: string) => {
+    try {
+      // validate commentId
+      if (!commentId) throw new Error("Invalid comment key");
+      const comment = await Comment.findByPk(commentId);
+      if (!comment) throw new Error("Comment not found");
+      if (comment instanceof Error) throw comment;
+      // check if this comment is a parent comment of any other comment
+      const childComments = await Comment.findAll({
+        where: {
+          parentCommentId: {[Op.eq]: comment.commentId}
+        }
+      });
+      if (childComments instanceof Error) throw childComments;
+      return childComments.map(item => item.commentId);
+    } catch (error) {
+      console.error(error);
+      return new Error(error instanceof Error ? error.message : error);      
     }
   };
 }
+
+export default CommentService;

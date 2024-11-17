@@ -5,19 +5,12 @@ import AuthenticateUser from "../middlewares/AuthenticateUser";
 
 const CommentRouter = Router();
 
-// Get the id list of a video's direct comments
-CommentRouter.route("/get-direct-comment/:videoId").get(CommentController.getVideoDirectCommentIdList);
-
-// Get the content of a comment via its commentId
-CommentRouter.route("/get-comment-content/:commentId").get(CommentController.getCommentContent);
-
-// Get the id list of a comment's child comments list
-CommentRouter.route("/get-child-comment/:commentId").get(CommentController.getChildCommentIdList);
-
-// Create a comment
-CommentRouter.route("/create-comment").post(AuthenticateUser, CommentController.createComment);
-
-// Delete a comment
-CommentRouter.route("/delete-comment/:commentId").post(AuthenticateUser, CommentController.deleteComment);
+CommentRouter.route('/video/:videoId').get(CommentController.findVideoCommentIds);
+CommentRouter.route('/id/:commentId').get(CommentController.findCommentById);
+CommentRouter.route('/create').post(AuthenticateUser, CommentController.createComment);
+CommentRouter.route('/update/:commentId').post(AuthenticateUser, CommentController.updateComment);
+CommentRouter.route('/delete/:commentId').post(AuthenticateUser, CommentController.deleteComment);
+CommentRouter.route('/is-parent/:commentId').get(CommentController.isParentComment);
+CommentRouter.route('/find-child-comment/:commentId').get(CommentController.findChildCommentIds);
 
 export default CommentRouter;

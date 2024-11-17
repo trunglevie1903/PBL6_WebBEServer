@@ -394,6 +394,17 @@ class UserController {
       res.status(400).json({ error: error.message });
     }
   }
+
+  static searchUser = async (req: Request, res: Response) => {
+    try {
+      const {searchText} = req.params;
+      if (!searchText) throw new Error("Invalid search value");
+      const ids = await UserService.searchUser(searchText);
+      return res.status(200).json({userIds: ids instanceof Error ? [] : ids});
+    } catch (error) {
+      return res.status(400).json({error: error.message});
+    }
+  };
 }
 
 export default UserController;

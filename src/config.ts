@@ -19,7 +19,7 @@ interface Config {
 export const config: Config = {
   port: process.env.PORT || 3000,
   databaseUrl: process.env.DATABASE_URL || '',
-  jwtSecret: process.env.JWT_SECRET || 'defaultsecret',
+  jwtSecret: process.env.JWT_SECRET || 'mysecretkey',
   DB_NAME: process.env.DB_NAME || "PBL6",
   DB_USER: process.env.DB_USER || "root",
   DB_PASS: process.env.DB_PASS || "12345678",
